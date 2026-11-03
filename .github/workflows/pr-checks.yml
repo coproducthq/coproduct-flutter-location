@@ -53,10 +53,4 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
-      # Fails until the coproduct dependency below is a pub.dev hosted range
-      # rather than the local path: override noted in pubspec.yaml. Not
-      # continue-on-error, so the gap stays visible rather than silently
-      # passing, but allowed to fail without blocking a merge until that swap
-      # happens
       - run: dart pub publish --dry-run
-        continue-on-error: true
