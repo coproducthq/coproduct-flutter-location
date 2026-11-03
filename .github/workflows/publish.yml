@@ -32,7 +32,7 @@ jobs:
           ref: ${{ inputs.ref }}
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          channel: stable
+          flutter-version: 3.41.7
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
@@ -52,7 +52,7 @@ jobs:
           ref: ${{ inputs.ref }}
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
-          channel: stable
+          flutter-version: 3.41.7
       # With the OIDC permission, setup-dart-via-flutter-action mints a
       # pub.dev token, registers it, and exports it to every later step. The
       # publish step mints its own fresh token, so this one is dropped before
