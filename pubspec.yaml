@@ -1,0 +1,30 @@
+name: coproduct_location
+description: "Opt-in GPS geo-fence location for the Coproduct Flutter SDK. Depend on this only if you use geo-fence targeting, so apps that just read flags carry no location-permission code."
+version: 0.1.0
+homepage: https://coproduct.app
+repository: https://github.com/coproducthq/coproduct-flutter-location
+issue_tracker: https://github.com/coproducthq/coproduct-flutter-location/issues
+topics:
+  - feature-flags
+  - geofencing
+  - location
+  - targeting
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+  flutter: ">=3.38.1"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Local path dependency for development against this session's worktree.
+  # Switch to a hosted range (coproduct: ^<version>) once the geolocator-free
+  # coproduct release this package depends on is published to pub.dev.
+  coproduct:
+    path: /Users/basil/projects/coproduct/coproduct-client-sdks/.claude/worktrees/flutter-location-split/sdks/flutter/coproduct
+  geolocator: ">=13.0.1 <15.0.0"
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
