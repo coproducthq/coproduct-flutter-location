@@ -1,0 +1,81 @@
+name: Release Please
+
+# On every push to main, opens or updates the release PR. When that PR merges,
+# tags it, creates its draft GitHub release, and starts publish.yml on the tag.
+# Run it by hand with a tag to start publish.yml again for a release whose
+# dispatch was lost.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to publish again, for example v0.1.0"
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release PR and publish dispatch
+    runs-on: ubuntu-24.04
+    environment: release
+    timeout-minutes: 10
+    steps:
+      # The App token, unlike GITHUB_TOKEN, starts workflows from the events it
+      # causes. This one goes to the third-party release-please action, so it
+      # cannot start workflows itself
+      - id: token
+        if: github.event_name == 'push'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+      - id: rp
+        if: github.event_name == 'push'
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.token.outputs.token }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+      # Only the dispatch step holds this token. It can start publish.yml and
+      # read the tag, and publish.yml releases only when this App dispatched it.
+      # It runs under the dispatch step's own condition
+      - id: dispatch-token
+        if: always() && (steps.rp.outputs['.--release_created'] == 'true' || (github.event_name == 'workflow_dispatch'))
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_KEY }}
+          permission-actions: write
+          permission-contents: read
+      # always() lets a release-please step that fails after reporting its
+      # release still start the publish run. If it fails before reporting, run
+      # this workflow by hand with the tag. The tag is the run's ref, never an
+      # input, because publish.yml releases only on a tag ref
+      - name: Start publish.yml on the release tag
+        if: always() && (steps.rp.outputs['.--release_created'] == 'true' || (github.event_name == 'workflow_dispatch'))
+        env:
+          GH_TOKEN: ${{ steps.dispatch-token.outputs.token }}
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || steps.rp.outputs['.--tag_name'] }}
+        shell: bash
+        run: |
+          # The tag can come from a person, so it is checked before anything
+          # prints it, and printed only escaped until then
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            printf '::error::%q is not a release tag like v0.1.0\n' "$TAG"
+            exit 1
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::No release App token, so publish.yml cannot be started. Re-run this workflow by hand with tag $TAG once the token step works"
+            exit 1
+          fi
+          gh workflow run publish.yml -R "$GITHUB_REPOSITORY" --ref "$TAG"

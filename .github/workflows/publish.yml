@@ -1,0 +1,102 @@
+name: Publish
+
+# Dispatched by release-please.yml on a release tag (or by hand, to retry a
+# dispatch that was lost). Runs at that tag, verifies the package, and
+# publishes it to pub.dev through GitHub OIDC trusted publishing, then
+# finishes the GitHub release. Unlike coproduct-client-sdks's Flutter SDK,
+# this package has no native/Rust core to compile or seal, so there is no
+# separate build pipeline before this: pub.dev publishes the source tree
+# directly off the tagged commit.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Release tag to publish, for example v0.1.0"
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: publish-${{ inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Analyze and test the tagged commit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  publish:
+    name: Publish to pub.dev
+    needs: verify
+    runs-on: ubuntu-24.04
+    environment: pub.dev
+    permissions:
+      contents: read
+      id-token: write
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+      # With the OIDC permission, setup-dart-via-flutter-action mints a
+      # pub.dev token, registers it, and exports it to every later step. The
+      # publish step mints its own fresh token, so this one is dropped before
+      # any other step runs
+      - name: Drop any pub.dev token the setup step created
+        run: dart pub token remove --all || true
+      - run: flutter pub get
+      # The release tag is vX.Y.Z; pubspec.yaml's version must match exactly,
+      # so a package staged at another version can never go out under this tag
+      - name: Verify the package carries the release version
+        env:
+          REF: ${{ inputs.ref }}
+        shell: bash
+        run: |
+          version="${REF#v}"
+          actual=$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml)
+          if [ "$actual" != "$version" ]; then
+            printf '::error::pubspec.yaml is version %q, but this release tag is %q, so nothing was published\n' "$actual" "$REF"
+            exit 1
+          fi
+      - name: Publish
+        run: |
+          response=$(curl -sSf --get --data-urlencode 'audience=https://pub.dev' \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL")
+          token=$(jq -r '.value // empty' <<< "$response")
+          if [ -z "$token" ]; then
+            echo "::error::GitHub returned no OIDC token for pub.dev, so nothing was published"
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          export PUB_TOKEN="$token"
+          flutter pub token add https://pub.dev --env-var PUB_TOKEN
+          dart pub publish --force
+
+  finish-release:
+    name: Publish the GitHub release
+    needs: publish
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+    timeout-minutes: 5
+    steps:
+      - env:
+          REF: ${{ inputs.ref }}
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$REF" -R "$GITHUB_REPOSITORY" --draft=false
