@@ -60,16 +60,17 @@ jobs:
       - name: Drop any pub.dev token the setup step created
         run: dart pub token remove --all || true
       - run: flutter pub get
-      # The release tag is vX.Y.Z; pubspec.yaml's version must match exactly,
-      # so a package staged at another version can never go out under this tag
+      # The release tag ends in X.Y.Z, however it's prefixed; pubspec.yaml's
+      # version must match exactly, so a package staged at another version
+      # can never go out under this tag
       - name: Verify the package carries the release version
         env:
           REF: ${{ inputs.ref }}
         shell: bash
         run: |
-          version="${REF#v}"
+          version=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+$' <<< "$REF")
           actual=$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml)
-          if [ "$actual" != "$version" ]; then
+          if [ -z "$version" ] || [ "$actual" != "$version" ]; then
             printf '::error::pubspec.yaml is version %q, but this release tag is %q, so nothing was published\n' "$actual" "$REF"
             exit 1
           fi
