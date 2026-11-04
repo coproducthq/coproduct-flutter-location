@@ -1,7 +1,7 @@
 # coproduct_location
 
-Opt-in GPS geo-fence location for the [Coproduct](https://coproduct.app)
-Flutter SDK.
+Opt-in geo-fence location targeting for the [Coproduct](https://coproduct.app)
+Flutter SDK. Requires location permission.
 
 The main [`coproduct`](https://pub.dev/packages/coproduct) package ships no
 location code. Add this package only if you use **geo-fence targeting**:
