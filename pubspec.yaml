@@ -1,6 +1,6 @@
 name: coproduct_location
 description: "Opt-in GPS geo-fence location for the Coproduct Flutter SDK. Depend on this only if you use geo-fence targeting, so apps that just read flags carry no location-permission code."
-version: 0.1.1
+version: 0.1.2
 homepage: https://coproduct.app
 repository: https://github.com/coproducthq/coproduct-flutter-location
 issue_tracker: https://github.com/coproducthq/coproduct-flutter-location/issues
