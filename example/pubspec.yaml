@@ -31,8 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  coproduct:
-    path: /Users/basil/projects/coproduct/coproduct-client-sdks/.claude/worktrees/flutter-location-split/sdks/flutter/coproduct
+  coproduct: ^1.3.0
   coproduct_location:
     path: ../
   geolocator: ">=13.0.1 <15.0.0"

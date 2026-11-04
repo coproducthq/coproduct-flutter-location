@@ -4,7 +4,7 @@ Opt-in GPS geo-fence location for the [Coproduct](https://coproduct.app)
 Flutter SDK.
 
 The main [`coproduct`](https://pub.dev/packages/coproduct) package ships no
-location code. Add this package only if you use **geo-fence targeting** —
+location code. Add this package only if you use **geo-fence targeting**:
 matching a flag or segment against a center latitude/longitude and a radius.
 Apps that just read flags never carry any location-permission API, so they
 never risk Apple's App Store scanner flagging a dead location code path
@@ -12,11 +12,13 @@ never risk Apple's App Store scanner flagging a dead location code path
 
 ## Install
 
+<!-- x-release-please-start-version -->
 ```yaml
 dependencies:
   coproduct: ^1.3.1
   coproduct_location: ^0.1.0
 ```
+<!-- x-release-please-end -->
 
 Add the platform permission strings, since this package's only job is to
 read location through [`geolocator`](https://pub.dev/packages/geolocator),
@@ -35,6 +37,27 @@ Author the fence in the dashboard: add a **Location (GPS)** condition with
 the **within radius of** operator to a segment, set the center and radius,
 and point your flag's targeting rule at that segment. This package's only
 job is to supply the device's position as the `device_location` attribute.
+
+**Data format.** A `within_radius` condition's values are three strings,
+`[center_lat, center_lng, radius_meters]`, in that order. The attribute it
+matches against, `device_location`, is a two-element number array,
+`[lat, lng]`. Both are evaluated by `coproduct-core`'s haversine
+great-circle distance, so a device is inside the fence when that distance to
+the center is less than or equal to the radius:
+
+```json
+{
+  "type": "attribute",
+  "attribute": "device_location",
+  "operator": "within_radius",
+  "values": ["37.7749", "-122.4194", "500"]
+}
+```
+
+This package never constructs that condition itself — it only supplies
+`device_location`. The condition above is what the dashboard writes when you
+author the fence, shown here so the shape is unambiguous if you're
+inspecting a snapshot or writing a test fixture.
 
 ```dart
 import 'package:coproduct/coproduct.dart';

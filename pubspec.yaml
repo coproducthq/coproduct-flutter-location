@@ -17,11 +17,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Local path dependency for development against this session's worktree.
-  # Switch to a hosted range (coproduct: ^<version>) once the geolocator-free
-  # coproduct release this package depends on is published to pub.dev.
-  coproduct:
-    path: /Users/basil/projects/coproduct/coproduct-client-sdks/.claude/worktrees/flutter-location-split/sdks/flutter/coproduct
+  # This package only calls updateAttributes and AttributeValue, both stable
+  # on pub.dev today, so it does not need to wait for the in-flight
+  # geolocator-free coproduct release before depending on a hosted version
+  coproduct: ^1.3.0
   geolocator: ">=13.0.1 <15.0.0"
 
 dev_dependencies:
