@@ -50,7 +50,7 @@ jobs:
       # read the tag, and publish.yml releases only when this App dispatched it.
       # It runs under the dispatch step's own condition
       - id: dispatch-token
-        if: always() && (steps.rp.outputs['.--release_created'] == 'true' || (github.event_name == 'workflow_dispatch'))
+        if: always() && (steps.rp.outputs.release_created == 'true' || (github.event_name == 'workflow_dispatch'))
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
@@ -59,13 +59,15 @@ jobs:
           permission-contents: read
       # always() lets a release-please step that fails after reporting its
       # release still start the publish run. If it fails before reporting, run
-      # this workflow by hand with the tag. The tag is the run's ref, never an
-      # input, because publish.yml releases only on a tag ref
+      # this workflow by hand with the tag. A root-path package's outputs have
+      # no path prefix (steps.rp.outputs.release_created, not
+      # steps.rp.outputs['.--release_created']): unlike coproduct-client-sdks,
+      # every package here lives at the repo root
       - name: Start publish.yml on the release tag
-        if: always() && (steps.rp.outputs['.--release_created'] == 'true' || (github.event_name == 'workflow_dispatch'))
+        if: always() && (steps.rp.outputs.release_created == 'true' || (github.event_name == 'workflow_dispatch'))
         env:
           GH_TOKEN: ${{ steps.dispatch-token.outputs.token }}
-          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || steps.rp.outputs['.--tag_name'] }}
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || steps.rp.outputs.tag_name }}
         shell: bash
         run: |
           # The tag can come from a person, so it is checked before anything
@@ -78,4 +80,7 @@ jobs:
             echo "::error::No release App token, so publish.yml cannot be started. Re-run this workflow by hand with tag $TAG once the token step works"
             exit 1
           fi
-          gh workflow run publish.yml -R "$GITHUB_REPOSITORY" --ref "$TAG"
+          # --ref selects which commit's workflow file runs; -f ref= supplies
+          # the input publish.yml's own steps read. Dropping the -f would
+          # leave that required input unset even though the dispatch succeeds
+          gh workflow run publish.yml -R "$GITHUB_REPOSITORY" --ref "$TAG" -f ref="$TAG"
