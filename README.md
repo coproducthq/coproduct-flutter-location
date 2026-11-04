@@ -15,8 +15,8 @@ never risk Apple's App Store scanner flagging a dead location code path
 <!-- x-release-please-start-version -->
 ```yaml
 dependencies:
-  coproduct: ^1.3.1
-  coproduct_location: ^0.1.0
+  coproduct: ^0.1.1
+  coproduct_location: ^0.1.1
 ```
 <!-- x-release-please-end -->
 
